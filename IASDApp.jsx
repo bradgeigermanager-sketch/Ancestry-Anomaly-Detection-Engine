@@ -83,6 +83,7 @@ const AnalysisPanel = ({ person, analysis }) => (
     <ScoreCard score={analysis.score} />
     <FeatureList features={analysis.features} />
     <RecordTimeline records={analysis.features.record_features} />
+    <CoherenceGraph systems={analysis.features.record_features} />
     <SpeciesTraitRadarCompare
   labels={["Morphology", "Genetics", "Lifespan", "Metabolism", "Cognition"]}
   observedTraits={analysis.features.observed_trait_vector}
