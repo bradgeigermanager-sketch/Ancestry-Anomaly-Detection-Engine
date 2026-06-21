@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IASD Engine — Imposter Detection UI</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, sans-serif;
+        background: #0f0f0f;
+        color: #e0e0e0;
+    }
+
+    header {
+        background: #1a1a1a;
+        padding: 20px;
+        font-size: 24px;
+        font-weight: 600;
+        border-bottom: 2px solid #333;
+    }
+
+    #container {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        height: calc(100vh - 70px);
+    }
+
+    #sidebar {
+        background: #141414;
+        border-right: 2px solid #333;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    #main {
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .section-title {
+        font-size: 18px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        font-weight: 600;
+        border-bottom: 1px solid #444;
+        padding-bottom: 5px;
+    }
+
+    .person-item {
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #1f1f1f;
+        border: 1px solid #333;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .person-item:hover {
+        background: #2a2a2a;
+    }
+
+    .panel {
+        background: #1a1a1a;
+        padding: 20px;
+        border: 1px solid #333;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .metric {
+        margin: 10px 0;
+        padding: 10px;
+        background: #222;
+        border-radius: 4px;
+        border-left: 4px solid #555;
+    }
+
+    .metric-label {
+        font-size: 14px;
+        opacity: 0.8;
+    }
+
+    .metric-value {
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .score-bar {
+        height: 10px;
+        background: #333;
+        border-radius: 4px;
+        margin-top: 5px;
+        overflow: hidden;
+    }
+
+    .score-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff4444, #ff8800);
+    }
+
+    .json-block {
+        background: #111;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre;
+        overflow-x: auto;
+        border: 1px solid #333;
+    }
+</style>
+</head>
+
+<body>
+
+<header>IASD Engine — Imposter Detection Dashboard</header>
+
+<div id="container">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <div class="section-title">People</div>
+        <div id="people-list"></div>
+    </div>
+
+    <!-- MAIN PANEL -->
+    <div id="main">
+        <div id="welcome" class="panel">
+            <h2>Welcome</h2>
+            <p>Select a person from the left to run IASD analysis.</p>
+        </div>
+
+        <div id="analysis" style="display:none;">
+            <div class="panel">
+                <h2 id="person-name"></h2>
+                <div class="metric">
+                    <div class="metric-label">Imposter Score</div>
+                    <div class="metric-value" id="score-value"></div>
+                    <div class="score-bar"><div id="score-bar-fill" class="score-fill"></div></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Feature Breakdown</h3>
+                <div id="feature-list"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Raw Feature JSON</h3>
+                <div id="json-output" class="json-block"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ============================================================
+   UI ENGINE — expects backend endpoints:
+   GET /people
+   GET /iasd/<person_id>
+   ============================================================ */
+
+async function loadPeople() {
+    const res = await fetch("/people");
+    const people = await res.json();
+
+    const list = document.getElementById("people-list");
+    list.innerHTML = "";
+
+    people.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "person-item";
+        div.textContent = p.name + " (" + p.id + ")";
+        div.onclick = () => runIASD(p.id, p.name);
+        list.appendChild(div);
+    });
+}
+
+async function runIASD(personId, personName) {
+    const res = await fetch("/iasd/" + personId);
+    const data = await res.json();
+
+    document.getElementById("welcome").style.display = "none";
+    document.getElementById("analysis").style.display = "block";
+
+    document.getElementById("person-name").textContent = personName;
+    document.getElementById("score-value").textContent = data.score.toFixed(4);
+
+    const fill = document.getElementById("score-bar-fill");
+    fill.style.width = Math.min(100, data.score * 100) + "%";
+
+    const featureList = document.getElementById("feature-list");
+    featureList.innerHTML = "";
+
+    for (const [key, value] of Object.entries(data.features)) {
+        const div = document.createElement("div");
+        div.className = "metric";
+        div.innerHTML = `
+            <div class="metric-label">${key}</div>
+            <div class="metric-value">${typeof value === "number" ? value.toFixed(4) : value}</div>
+        `;
+        featureList.appendChild(div);
+    }
+
+    document.getElementById("json-output").textContent =
+        JSON.stringify(data, null, 2);
+}
+
+loadPeople();
+</script>
+
+</body>
+</html>
